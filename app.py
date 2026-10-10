@@ -1,4 +1,8 @@
 import streamlit as st
+import subprocess
+import tempfile
+import os
+import imageio_ffmpeg
 
 st.set_page_config(
     page_title="KOZINMOE Myanmar Recap Studio",
@@ -9,8 +13,6 @@ st.set_page_config(
 st.title("KOZINMOE Myanmar Recap Studio")
 st.caption("AI Video Recap • Burmese TTS • Subtitles")
 
-st.divider()
-
 st.header("1. Video Upload")
 
 video = st.file_uploader(
@@ -18,71 +20,38 @@ video = st.file_uploader(
     type=["mp4", "mov", "mkv", "webm"]
 )
 
-if video:
-    st.video(video)
-    st.success(f"ရွေးချယ်ထားသောဖိုင်: {video.name}")
-
-st.info(
-    "Video အရှည်ကို App ဘက်မှ မကန့်သတ်ထားပါ။ "
-    "လက်တွေ့လုပ်ဆောင်နိုင်မှုသည် Hosting စွမ်းဆောင်ရည်ပေါ် မူတည်ပါမည်။"
-)
-
-st.divider()
-
 st.header("2. Video Settings")
 
-col1, col2 = st.columns(2)
+resolution = st.selectbox(
+    "Resolution",
+    ["720p", "1080p"]
+)
 
-with col1:
-    resolution = st.selectbox(
-        "Resolution",
-        ["720p", "1080p"]
-    )
+ratio = st.selectbox(
+    "Video Ratio",
+    ["9:16", "16:9", "1:1", "4:3", "3:4"]
+)
 
-    ratio = st.selectbox(
-        "Video Ratio",
-        ["9:16", "16:9", "1:1", "4:3", "3:4"]
-    )
+mute_original = st.checkbox(
+    "မူရင်းအသံပိတ်ရန်",
+    value=True
+)
 
-with col2:
-    mute_original = st.checkbox(
-        "မူရင်းအသံပိတ်ရန်",
-        value=True
-    )
+blur_enabled = st.checkbox(
+    "Blur ဖွင့်ရန်",
+    value=False
+)
 
-    blur_enabled = st.checkbox(
-        "Blur ဖွင့်ရန်",
-        value=False
-    )
-
-    blur_strength = st.slider(
-        "Blur Size / Strength",
-        1, 50, 15
-    )
-
-with st.expander("Freeze Frame & Zoom Settings"):
-    freeze_interval = st.slider(
-        "Freeze Frame Interval (seconds)",
-        1, 30, 4
-    )
-
-    freeze_duration = st.slider(
-        "Freeze Frame Duration (seconds)",
-        1, 15, 7
-    )
-
-    zoom_power = st.slider(
-        "Zoom Power",
-        1.0, 3.0, 1.5, 0.1
-    )
-
-st.divider()
+blur_strength = st.slider(
+    "Blur Strength",
+    1, 20, 5
+)
 
 st.header("3. Burmese Subtitles")
 
 subtitle_enabled = st.checkbox(
     "မြန်မာစာတန်းထိုး ဖွင့်ရန်",
-    value=True
+    value=False
 )
 
 subtitle_text = st.text_area(
@@ -90,14 +59,10 @@ subtitle_text = st.text_area(
     placeholder="မြန်မာစာသားကို ဒီမှာ ထည့်ပါ..."
 )
 
-font_size = st.slider(
-    "စာတန်းအရွယ်အစား (px)",
-    20, 60, 40
+st.caption(
+    "မြန်မာစာတန်းထိုးအတွက် Font နှင့် Rendering ကို "
+    "နောက်အဆင့်တွင် ချိတ်ဆက်ပါမည်။"
 )
-
-st.caption("Font: Pyidaungsu — စာတန်းထိုးရန် Font ဖိုင်လိုအပ်ပါမည်။")
-
-st.divider()
 
 st.header("4. Gemini Burmese TTS")
 
@@ -109,32 +74,52 @@ voice = st.selectbox(
     ]
 )
 
-speed = st.select_slider(
-    "Voice Speed",
-    options=["အနှေး", "ပုံမှန်", "အမြန်"],
-    value="ပုံမှန်"
-)
-
 narration = st.text_area(
     "အသံထုတ်ရန် ဇာတ်ကြောင်း",
     placeholder="မြန်မာဇာတ်ကြောင်းကို ဒီမှာ ရေးပါ..."
 )
 
-st.button(
-    "Generate Burmese Voice",
-    type="primary",
-    disabled=not bool(narration.strip())
+st.info(
+    "Gemini TTS ကို နောက်အဆင့်တွင် ချိတ်ဆက်ပါမည်။"
 )
 
-st.divider()
+st.header("5. Process & Export")
 
-st.header("5. Export")
+if st.button("Process Video & Export MP4", type="primary"):
 
-st.write(f"Resolution: {resolution}")
-st.write(f"Video Ratio: {ratio}")
+    if video is None:
+        st.error("အရင်ဆုံး Video ဖိုင် ရွေးချယ်ပါ။")
 
-st.warning(
-    "ဒီအဆင့်မှာ Website မျက်နှာပြင်ကိုသာ တည်ဆောက်ထားပါတယ်။ "
-    "TTS ထုတ်လုပ်ခြင်း၊ Video Effects ပေါင်းစပ်ခြင်းနဲ့ "
-    "MP4 Export ကို နောက်အဆင့်မှာ ချိတ်ဆက်ရပါမယ်။"
-)
+    else:
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+
+                input_path = os.path.join(
+                    temp_dir, "input_video"
+                )
+
+                output_path = os.path.join(
+                    temp_dir, "output.mp4"
+                )
+
+                with open(input_path, "wb") as f:
+                    f.write(video.getvalue())
+
+                dimensions = {
+                    ("720p", "9:16"): (720, 1280),
+                    ("720p", "16:9"): (1280, 720),
+                    ("720p", "1:1"): (720, 720),
+                    ("720p", "4:3"): (960, 720),
+                    ("720p", "3:4"): (720, 960),
+                    ("1080p", "9:16"): (1080, 1920),
+                    ("1080p", "16:9"): (1920, 1080),
+                    ("1080p", "1:1"): (1080, 1080),
+                    ("1080p", "4:3"): (1440, 1080),
+                    ("1080p", "3:4"): (1080, 1440),
+                }
+
+                width, height = dimensions[(resolution, ratio)]
+
+                filters = [
+                    f"scale={width}:{height}:"
+                    "
