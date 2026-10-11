@@ -1,3 +1,6 @@
 streamlit
 imageio-ffmpeg
 google-genai
+streamlit
+imageio-ffmpeg
+google-genai
