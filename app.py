@@ -225,5 +225,6 @@ if st.button("Process Video & Export MP4", type="primary"):
                         label="Download MP4",
                         data=output_bytes,
                         file_name="kozinmoe_recap.mp4",
-                        mime="video/mp4")
+                        mime="video/mp4"
+                  )
                     
