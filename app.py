@@ -212,6 +212,11 @@ if st.button("Process Video & Export MP4", type="primary"):
                     st.code(result.stderr[-3000:])
 
                 else:
+                                    if result.returncode != 0:
+                    st.error("Video Export မအောင်မြင်ပါ။")
+                    st.code(result.stderr[-3000:])
+
+                else:
                     with open(output_path, "rb") as f:
                         output_bytes = f.read()
 
