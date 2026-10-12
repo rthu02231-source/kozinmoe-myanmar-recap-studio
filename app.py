@@ -219,7 +219,9 @@ if st.button("Process Video & Export MP4", type="primary"):
                         "Video နဲ့ Gemini အသံ ပေါင်းပြီးပါပြီ။"
                     )
 
-                    st.video(output_bytes)                    st.download_button(
+                    st.video(output_bytes) 
+                    
+                    st.download_button(
                         label="Download MP4",
                         data=output_bytes,
                         file_name="kozinmoe_recap.mp4",
